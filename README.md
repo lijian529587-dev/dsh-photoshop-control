@@ -40,6 +40,22 @@
 | `photoshop_batch` | 顺序执行多个工具步骤 |
 | `photoshop_run_jsx` | 运行自定义 Photoshop ExtendScript |
 
+## 安装到 DeepSeek Harness
+
+仓库里的 `dsh-plugin/` 是同一套能力的 **DeepSeek Harness 原生插件**：不需要 Python、不需要 npm 依赖，
+由 Harness 的宿主进程直接调用 `scripts/photoshop_bridge.ps1`。
+
+```powershell
+# 在仓库根目录执行，插件以 link 方式装入 profile
+dsh plugin --profile <profile> add ./dsh-plugin
+```
+
+装好后刷新页面，工具列表里会出现 `photoshop_status`、`photoshop_create_document`、
+`photoshop_add_text_layer`、`photoshop_draw_paths`、`photoshop_texture_recolor`、
+`photoshop_export_active`、`photoshop_batch` 等 14 个工具。
+
+细节见 [dsh-plugin/README.md](dsh-plugin/README.md)。
+
 ## 安装到 Codex
 
 ### 1. 克隆项目
