@@ -1,0 +1,38 @@
+{
+  "name": "dsh-photoshop-control",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Drive local Adobe Photoshop from DeepSeek Harness through Windows COM and ExtendScript.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "lib/index.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "scripts/photoshop_bridge.ps1"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "keywords": [
+    "deepseek",
+    "harness",
+    "dsh",
+    "dsh-plugin",
+    "photoshop",
+    "extendscript",
+    "com",
+    "automation"
+  ],
+  "license": "MIT"
+}
