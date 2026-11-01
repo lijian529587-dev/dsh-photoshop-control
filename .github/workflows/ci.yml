@@ -26,6 +26,15 @@ jobs:
           $errors = $null
           [System.Management.Automation.PSParser]::Tokenize((Get-Content -Raw -LiteralPath "scripts/photoshop_bridge.ps1"), [ref]$errors) | Out-Null
           if ($errors) { $errors | Format-List; exit 1 }
+      - name: Check the two bridge copies are identical
+        shell: pwsh
+        run: |
+          $a = (Get-FileHash -LiteralPath "scripts/photoshop_bridge.ps1" -Algorithm SHA256).Hash
+          $b = (Get-FileHash -LiteralPath "dsh-plugin/scripts/photoshop_bridge.ps1" -Algorithm SHA256).Hash
+          if ($a -ne $b) { Write-Error "scripts/photoshop_bridge.ps1 and dsh-plugin/scripts/photoshop_bridge.ps1 differ"; exit 1 }
+      - name: Syntax-check the DSH plugin
+        shell: pwsh
+        run: node --check dsh-plugin/lib/index.js
       - name: Validate MCP tools/list
         shell: pwsh
         run: |
