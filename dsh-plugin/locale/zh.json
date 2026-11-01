@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Photoshop 控制",
+    "description": "通过 COM 直接接管本机 Adobe Photoshop：新建画布、放置图片、可编辑文字与路径、保留质感的局部换色、批量导出。"
+  }
+}
