@@ -9,6 +9,19 @@
 
 ## 安装方式
 
+### DeepSeek Harness（推荐）
+
+不需要 Python：插件走 Harness 宿主进程 → PowerShell 桥 → Photoshop COM。
+
+```powershell
+git clone https://github.com/lijian529587-dev/photoshop-beta-control.git
+cd photoshop-beta-control
+dsh plugin --profile <你的 profile> add ./dsh-plugin
+```
+
+插件以 `link:` 方式安装，仓库里的 `scripts/photoshop_bridge.ps1` 会被直接使用；
+`dsh-plugin/scripts/photoshop_bridge.ps1` 是给独立打包预留的副本，两者必须保持一致。
+
 ### 克隆到 Codex 插件目录
 
 ```powershell
