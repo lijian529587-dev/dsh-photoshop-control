@@ -1,6 +1,6 @@
 param(
   [Parameter(Mandatory = $true)]
-  [ValidateSet("find_progids", "status", "run_jsx", "open_image", "create_document", "adjust_image", "apply_overlay", "place_image", "add_text_layer", "layer_ops", "draw_paths", "export_active")]
+  [ValidateSet("find_progids", "status", "run_jsx", "open_image", "create_document", "adjust_image", "apply_overlay", "place_image", "add_text_layer", "layer_ops", "draw_paths", "export_active", "texture_recolor")]
   [string]$Action,
 
   [string]$JsonFile,
@@ -9,6 +9,10 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+# Emit UTF-8 regardless of the console code page, so non-ASCII layer names,
+# paths and error text survive redirection back to the caller.
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 
 function Write-JsonResult($Value) {
   $Value | ConvertTo-Json -Depth 20 -Compress
@@ -118,19 +122,6 @@ function __psDocInfo() {
 __psDocInfo();
 '@
 
-function New-SaveJsx([string]$OutputPath, [int]$JpegQuality) {
-  $payload = [pscustomobject]@{
-    outputPath = $OutputPath
-    jpegQuality = $JpegQuality
-  }
-  $literal = ConvertTo-JsLiteral $payload
-  return @"
-var __psParams = $literal;
-function __psExt(path) {
-  var m = String(path).match(/\.([^.\\\/]+)$/);
-  return m ? m[1].toLowerCase() : "";
-}
-
 $blendModeJsx = @'
 function __psSetBlendMode(layer, blendMode) {
   var mode = String(blendMode || "NORMAL").toUpperCase();
@@ -165,6 +156,20 @@ function __psHexToColor(hex) {
   return c;
 }
 '@
+
+function New-SaveJsx([string]$OutputPath, [int]$JpegQuality) {
+  $payload = [pscustomobject]@{
+    outputPath = $OutputPath
+    jpegQuality = $JpegQuality
+  }
+  $literal = ConvertTo-JsLiteral $payload
+  return @"
+var __psParams = $literal;
+function __psExt(path) {
+  var m = String(path).match(/\.([^.\\\/]+)$/);
+  return m ? m[1].toLowerCase() : "";
+}
+
 function __psSaveCopy(path, jpegQuality) {
   var file = new File(path);
   var ext = __psExt(path);
@@ -510,6 +515,47 @@ for (var __psI = 0; __psI < __psParams.paths.length; __psI++) {
   __psCreated.push(__psMakePath(__psParams.paths[__psI]));
 }
 '{"createdPaths":["' + __psCreated.join('","') + '"],"count":' + __psCreated.length + '}';
+"@
+      $result = Invoke-PhotoshopJsx $app $jsx
+    }
+    "texture_recolor" {
+      if (-not $payload.targetColor) { throw "texture_recolor requires targetColor." }
+      if (-not $payload.maskPolygons) { throw "texture_recolor requires maskPolygons." }
+      $literal = ConvertTo-JsLiteral $payload
+      $jsx = @"
+var __psParams = $literal;
+$colorHelpersJsx
+if (app.documents.length < 1) { throw new Error("No active Photoshop document."); }
+var __psDoc = app.activeDocument;
+var __psRemovedNames = __psParams.removeLayerNames || [];
+for (var __r = 0; __r < __psRemovedNames.length; __r++) {
+  var __psRemoveName = String(__psRemovedNames[__r]);
+  for (var __ri = __psDoc.artLayers.length - 1; __ri >= 0; __ri--) {
+    if (__psDoc.artLayers[__ri].name === __psRemoveName) { __psDoc.artLayers[__ri].remove(); }
+  }
+}
+var __psPolys = __psParams.maskPolygons || [];
+if (__psPolys.length < 1) { throw new Error("maskPolygons must contain at least one polygon."); }
+var __psFeather = Number(__psParams.featherPx || 0);
+for (var __pi = 0; __pi < __psPolys.length; __pi++) {
+  var __psPoly = __psPolys[__pi];
+  var __psPts = [];
+  for (var __pj = 0; __pj < __psPoly.length; __pj++) {
+    __psPts.push([Number(__psPoly[__pj].x), Number(__psPoly[__pj].y)]);
+  }
+  if (__psPts.length < 3) { throw new Error("Each polygon needs at least three points."); }
+  __psDoc.selection.select(__psPts, __pi === 0 ? SelectionType.REPLACE : SelectionType.EXTEND, __psFeather, true);
+}
+var __psTarget = __psHexToColor(String(__psParams.targetColor));
+var __psRecolorLayer = __psDoc.artLayers.add();
+__psRecolorLayer.name = __psParams.layerName || "Codex texture recolor";
+__psDoc.selection.fill(__psTarget, ColorBlendMode.NORMAL, 100, false);
+__psDoc.selection.deselect();
+// COLORBLEND keeps the source luminance, so folds, highlights and shadows survive.
+__psRecolorLayer.blendMode = BlendMode.COLORBLEND;
+if (__psParams.opacity !== undefined) { __psRecolorLayer.opacity = Number(__psParams.opacity); }
+"recolored";
+$docInfoJsx
 "@
       $result = Invoke-PhotoshopJsx $app $jsx
     }
